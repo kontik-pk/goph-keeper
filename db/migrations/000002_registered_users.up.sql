@@ -1,0 +1,1 @@
+create table if not exists registered_users (login text primary key, password text);
