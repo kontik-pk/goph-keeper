@@ -7,11 +7,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/kontik-pk/goph-keeper/internal"
+	"github.com/spf13/cobra"
 	"log"
 	"net/http"
-	"os"
-
-	"github.com/spf13/cobra"
 )
 
 // registerCmd represents the register command
@@ -22,13 +20,12 @@ var registerCmd = &cobra.Command{
 	Example: "goph-keeper register --login <user-system-login> --password <user-system-password>",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := godotenv.Load(".env"); err != nil {
-			log.Fatalf("Some error occured. Err: %s", err)
+			log.Fatalf("error while getting envs: %s", err)
 		}
 
 		var cfg internal.Params
 		if err := envconfig.Process("", &cfg); err != nil {
-			log.Printf("error while loading envs: %s\n", err)
-			os.Exit(1)
+			log.Fatalf("error while loading envs: %s\n", err)
 		}
 
 		login, _ := cmd.Flags().GetString("login")
@@ -40,8 +37,7 @@ var registerCmd = &cobra.Command{
 
 		body, err := json.Marshal(userCreds)
 		if err != nil {
-			log.Printf(err.Error())
-			os.Exit(1)
+			log.Fatalf(err.Error())
 		}
 
 		resp, err := resty.New().R().

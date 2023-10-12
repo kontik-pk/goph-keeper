@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func New(db postgres, log *zap.SugaredLogger) *chi.Mux {
+func New(db internal.Storage, log *zap.SugaredLogger) *chi.Mux {
 	httpHandler := handler.New(db, log)
 
 	r := chi.NewRouter()
@@ -34,20 +34,4 @@ func New(db postgres, log *zap.SugaredLogger) *chi.Mux {
 	})
 
 	return r
-}
-
-type postgres interface {
-	SaveCredentials(credentialsRequest internal.Credentials) error
-	GetCredentials(credentialsRequest internal.Credentials) ([]internal.Credentials, error)
-	DeleteCredentials(credentialsRequest internal.Credentials) error
-	UpdateCredentials(credentialsRequest internal.Credentials) error
-	SaveNote(note internal.Note) error
-	GetNotes(noteRequest internal.Note) ([]internal.Note, error)
-	SaveCard(card internal.Card) error
-	GetCard(cardRequest internal.Card) ([]internal.Card, error)
-	DeleteNotes(noteRequest internal.Note) error
-	UpdateNote(note internal.Note) error
-	Register(login string, password string) error
-	Login(login string, password string) error
-	DeleteCards(cardRequest internal.Card) error
 }

@@ -19,7 +19,7 @@ var deleteNotesCmd = &cobra.Command{
 	Example: "goph-keeper delete-note --user <user-name> --title <note title>",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := godotenv.Load(".env"); err != nil {
-			log.Fatalf("Some error occured. Err: %s", err)
+			log.Fatalf("error while getting envs: %s", err)
 		}
 		var cfg internal.Params
 		if err := envconfig.Process("", &cfg); err != nil {

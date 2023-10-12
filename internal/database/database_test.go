@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"crypto/aes"
 	"errors"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -13,6 +14,7 @@ import (
 func TestDb_Register(t *testing.T) {
 	userLogin := "jon"
 	userPassword := "winterfell"
+	ctx := context.Background()
 
 	t.Run("positive: new user", func(t *testing.T) {
 		mockDB, mock, err := sqlmock.New()
@@ -27,7 +29,7 @@ func TestDb_Register(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.Register(userLogin, userPassword)
+		err = pg.Register(ctx, userLogin, userPassword)
 		assert.NoError(t, err)
 	})
 	t.Run("negative: user exists", func(t *testing.T) {
@@ -43,7 +45,7 @@ func TestDb_Register(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.Register(userLogin, userPassword)
+		err = pg.Register(ctx, userLogin, userPassword)
 		assert.EqualError(t, err, ErrUserAlreadyExists.Error())
 	})
 	t.Run("negative: error while inserting", func(t *testing.T) {
@@ -59,7 +61,7 @@ func TestDb_Register(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.Register(userLogin, userPassword)
+		err = pg.Register(ctx, userLogin, userPassword)
 		assert.EqualError(t, err, "error while executing register user query: some insert error")
 	})
 }
@@ -67,6 +69,7 @@ func TestDb_Register(t *testing.T) {
 func TestDb_Login(t *testing.T) {
 	userLogin := "sansa"
 	userPassword := "ihateramsey"
+	ctx := context.Background()
 
 	t.Run("positive: successful login", func(t *testing.T) {
 		mockDB, mock, err := sqlmock.New()
@@ -85,7 +88,7 @@ func TestDb_Login(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.Login(userLogin, userPassword)
+		err = pg.Login(ctx, userLogin, userPassword)
 		assert.NoError(t, err)
 	})
 	t.Run("positive: no such user", func(t *testing.T) {
@@ -102,7 +105,7 @@ func TestDb_Login(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.Login(userLogin, userPassword)
+		err = pg.Login(ctx, userLogin, userPassword)
 		assert.EqualError(t, err, ErrNoSuchUser.Error())
 	})
 	t.Run("positive: invalid credentials", func(t *testing.T) {
@@ -119,7 +122,7 @@ func TestDb_Login(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.Login(userLogin, userPassword)
+		err = pg.Login(ctx, userLogin, userPassword)
 		assert.EqualError(t, err, ErrInvalidCredentials.Error())
 	})
 	t.Run("positive: search query", func(t *testing.T) {
@@ -136,7 +139,7 @@ func TestDb_Login(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.Login(userLogin, userPassword)
+		err = pg.Login(ctx, userLogin, userPassword)
 		assert.EqualError(t, err, "error while executing search query: search error")
 	})
 }
@@ -145,6 +148,7 @@ func TestDb_GetCredentials(t *testing.T) {
 	key := "thisis32bitlongpassphraseimusing"
 	c, _ := aes.NewCipher([]byte(key))
 	userLogin := "arya"
+	ctx := context.Background()
 
 	t.Run("positive: success", func(t *testing.T) {
 		expected := []internal.Credentials{
@@ -185,9 +189,10 @@ func TestDb_GetCredentials(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		creds, err := pg.GetCredentials(internal.Credentials{
-			UserName: userLogin,
-		})
+		creds, err := pg.GetCredentials(
+			ctx,
+			internal.Credentials{UserName: userLogin},
+		)
 		assert.NoError(t, err)
 		assert.Equal(t, expected, creds)
 	})
@@ -207,7 +212,7 @@ func TestDb_GetCredentials(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		_, err = pg.GetCredentials(internal.Credentials{
+		_, err = pg.GetCredentials(ctx, internal.Credentials{
 			UserName: userLogin,
 		})
 		assert.EqualError(t, err, ErrNoData.Error())
@@ -228,7 +233,7 @@ func TestDb_GetCredentials(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		_, err = pg.GetCredentials(internal.Credentials{
+		_, err = pg.GetCredentials(ctx, internal.Credentials{
 			UserName: userLogin,
 		})
 		assert.EqualError(t, err, "error while getting credentials for user \"arya\": query error")
@@ -244,6 +249,7 @@ func TestDb_SaveCredentials(t *testing.T) {
 		Password: Ptr("ilovewine"),
 		Metadata: Ptr("password for brothels"),
 	}
+	ctx := context.Background()
 
 	t.Run("positive: with metadata", func(t *testing.T) {
 		mockDB, mock, err := sqlmock.New()
@@ -261,7 +267,7 @@ func TestDb_SaveCredentials(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		err = pg.SaveCredentials(credentials)
+		err = pg.SaveCredentials(ctx, credentials)
 		assert.NoError(t, err)
 	})
 
@@ -282,7 +288,7 @@ func TestDb_SaveCredentials(t *testing.T) {
 			dataCipher:    c,
 		}
 		credentials.Metadata = nil
-		err = pg.SaveCredentials(credentials)
+		err = pg.SaveCredentials(ctx, credentials)
 		assert.NoError(t, err)
 	})
 	t.Run("negative: exec error", func(t *testing.T) {
@@ -302,7 +308,7 @@ func TestDb_SaveCredentials(t *testing.T) {
 			dataCipher:    c,
 		}
 		credentials.Metadata = nil
-		err = pg.SaveCredentials(credentials)
+		err = pg.SaveCredentials(ctx, credentials)
 		assert.EqualError(t, err, "error while saving credentials for user \"tirion\": exec error")
 	})
 }
@@ -310,6 +316,8 @@ func TestDb_SaveCredentials(t *testing.T) {
 func TestDb_DeleteCredentials(t *testing.T) {
 	user := "daenerys"
 	login := "motherofdragons"
+	ctx := context.Background()
+
 	t.Run("positive: no login", func(t *testing.T) {
 		mockDB, mock, err := sqlmock.New()
 		if err != nil {
@@ -324,7 +332,7 @@ func TestDb_DeleteCredentials(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.DeleteCredentials(internal.Credentials{
+		err = pg.DeleteCredentials(ctx, internal.Credentials{
 			UserName: user,
 		})
 		assert.NoError(t, err)
@@ -343,7 +351,7 @@ func TestDb_DeleteCredentials(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.DeleteCredentials(internal.Credentials{
+		err = pg.DeleteCredentials(ctx, internal.Credentials{
 			UserName: user,
 			Login:    &login,
 		})
@@ -363,7 +371,7 @@ func TestDb_DeleteCredentials(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.DeleteCredentials(internal.Credentials{
+		err = pg.DeleteCredentials(ctx, internal.Credentials{
 			UserName: user,
 		})
 		assert.EqualError(t, err, "error while deleting credentials for user \"daenerys\": some error")
@@ -382,7 +390,7 @@ func TestDb_DeleteCredentials(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.DeleteCredentials(internal.Credentials{
+		err = pg.DeleteCredentials(ctx, internal.Credentials{
 			UserName: user,
 			Login:    &login,
 		})
@@ -399,6 +407,7 @@ func TestDb_UpdateCredentials(t *testing.T) {
 		Password: Ptr("ilovewine"),
 		Metadata: Ptr("password for brothels"),
 	}
+	ctx := context.Background()
 
 	t.Run("positive: with metadata", func(t *testing.T) {
 		mockDB, mock, err := sqlmock.New()
@@ -416,7 +425,7 @@ func TestDb_UpdateCredentials(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		err = pg.UpdateCredentials(credentials)
+		err = pg.UpdateCredentials(ctx, credentials)
 		assert.NoError(t, err)
 	})
 
@@ -437,7 +446,7 @@ func TestDb_UpdateCredentials(t *testing.T) {
 			dataCipher:    c,
 		}
 		credentials.Metadata = nil
-		err = pg.UpdateCredentials(credentials)
+		err = pg.UpdateCredentials(ctx, credentials)
 		assert.NoError(t, err)
 	})
 	t.Run("negative: exec error", func(t *testing.T) {
@@ -457,7 +466,7 @@ func TestDb_UpdateCredentials(t *testing.T) {
 			dataCipher:    c,
 		}
 		credentials.Metadata = nil
-		err = pg.UpdateCredentials(credentials)
+		err = pg.UpdateCredentials(ctx, credentials)
 		assert.EqualError(t, err, "error while updating credentials for user \"tirion\": exec error")
 	})
 }
@@ -471,6 +480,7 @@ func TestDb_SaveNote(t *testing.T) {
 		Content:  Ptr("some note content"),
 		Metadata: Ptr("podric's best note"),
 	}
+	ctx := context.Background()
 
 	t.Run("positive: with metadata", func(t *testing.T) {
 		mockDB, mock, err := sqlmock.New()
@@ -488,7 +498,7 @@ func TestDb_SaveNote(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		err = pg.SaveNote(note)
+		err = pg.SaveNote(ctx, note)
 		assert.NoError(t, err)
 	})
 
@@ -509,7 +519,7 @@ func TestDb_SaveNote(t *testing.T) {
 			dataCipher:    c,
 		}
 		note.Metadata = nil
-		err = pg.SaveNote(note)
+		err = pg.SaveNote(ctx, note)
 		assert.NoError(t, err)
 	})
 	t.Run("negative: exec error", func(t *testing.T) {
@@ -529,7 +539,7 @@ func TestDb_SaveNote(t *testing.T) {
 			dataCipher:    c,
 		}
 		note.Metadata = nil
-		err = pg.SaveNote(note)
+		err = pg.SaveNote(ctx, note)
 		assert.EqualError(t, err, "error while saving note for user \"podric\": exec error")
 	})
 }
@@ -538,6 +548,7 @@ func TestDb_GetNote(t *testing.T) {
 	key := "thisis32bitlongpassphraseimusing"
 	c, _ := aes.NewCipher([]byte(key))
 	userLogin := "myrcella"
+	ctx := context.Background()
 
 	t.Run("positive: without title", func(t *testing.T) {
 		expected := []internal.Note{
@@ -578,7 +589,7 @@ func TestDb_GetNote(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		creds, err := pg.GetNotes(internal.Note{
+		creds, err := pg.GetNotes(ctx, internal.Note{
 			UserName: userLogin,
 		})
 		assert.NoError(t, err)
@@ -610,7 +621,7 @@ func TestDb_GetNote(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		creds, err := pg.GetNotes(internal.Note{
+		creds, err := pg.GetNotes(ctx, internal.Note{
 			UserName: userLogin,
 			Title:    Ptr("notes from dorne"),
 		})
@@ -633,7 +644,7 @@ func TestDb_GetNote(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		_, err = pg.GetNotes(internal.Note{
+		_, err = pg.GetNotes(ctx, internal.Note{
 			UserName: userLogin,
 		})
 		assert.EqualError(t, err, ErrNoData.Error())
@@ -654,7 +665,7 @@ func TestDb_GetNote(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		_, err = pg.GetNotes(internal.Note{
+		_, err = pg.GetNotes(ctx, internal.Note{
 			UserName: userLogin,
 		})
 		assert.EqualError(t, err, "error while getting notes for user \"myrcella\": query error")
@@ -664,6 +675,8 @@ func TestDb_GetNote(t *testing.T) {
 func TestDb_DeleteNotes(t *testing.T) {
 	user := "jorah"
 	title := "how to became a stone"
+	ctx := context.Background()
+
 	t.Run("positive: no title", func(t *testing.T) {
 		mockDB, mock, err := sqlmock.New()
 		if err != nil {
@@ -678,7 +691,7 @@ func TestDb_DeleteNotes(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.DeleteNotes(internal.Note{
+		err = pg.DeleteNotes(ctx, internal.Note{
 			UserName: user,
 		})
 		assert.NoError(t, err)
@@ -697,7 +710,7 @@ func TestDb_DeleteNotes(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.DeleteNotes(internal.Note{
+		err = pg.DeleteNotes(ctx, internal.Note{
 			UserName: user,
 			Title:    &title,
 		})
@@ -717,7 +730,7 @@ func TestDb_DeleteNotes(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.DeleteNotes(internal.Note{
+		err = pg.DeleteNotes(ctx, internal.Note{
 			UserName: user,
 		})
 		assert.EqualError(t, err, "error while deleting note for user \"jorah\": some error")
@@ -733,6 +746,7 @@ func TestDb_UpdateNote(t *testing.T) {
 		Content:  Ptr("some clever things"),
 		Metadata: Ptr("bla bla metadata"),
 	}
+	ctx := context.Background()
 
 	t.Run("positive: with metadata", func(t *testing.T) {
 		mockDB, mock, err := sqlmock.New()
@@ -750,7 +764,7 @@ func TestDb_UpdateNote(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		err = pg.UpdateNote(note)
+		err = pg.UpdateNote(ctx, note)
 		assert.NoError(t, err)
 	})
 
@@ -771,7 +785,7 @@ func TestDb_UpdateNote(t *testing.T) {
 			dataCipher:    c,
 		}
 		note.Metadata = nil
-		err = pg.UpdateNote(note)
+		err = pg.UpdateNote(ctx, note)
 		assert.NoError(t, err)
 	})
 	t.Run("negative: exec error", func(t *testing.T) {
@@ -791,7 +805,7 @@ func TestDb_UpdateNote(t *testing.T) {
 			dataCipher:    c,
 		}
 		note.Metadata = nil
-		err = pg.UpdateNote(note)
+		err = pg.UpdateNote(ctx, note)
 		assert.EqualError(t, err, "error while updating note \"shopping list\" for user \"varys\": exec error")
 	})
 }
@@ -807,6 +821,7 @@ func TestDb_SaveCard(t *testing.T) {
 		Password: Ptr("legacy"),
 		Metadata: Ptr("podric's best note"),
 	}
+	ctx := context.Background()
 
 	t.Run("positive: with metadata", func(t *testing.T) {
 		mockDB, mock, err := sqlmock.New()
@@ -824,7 +839,7 @@ func TestDb_SaveCard(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		err = pg.SaveCard(card)
+		err = pg.SaveCard(ctx, card)
 		assert.NoError(t, err)
 	})
 
@@ -845,7 +860,7 @@ func TestDb_SaveCard(t *testing.T) {
 			dataCipher:    c,
 		}
 		card.Metadata = nil
-		err = pg.SaveCard(card)
+		err = pg.SaveCard(ctx, card)
 		assert.NoError(t, err)
 	})
 	t.Run("negative: exec error", func(t *testing.T) {
@@ -865,7 +880,7 @@ func TestDb_SaveCard(t *testing.T) {
 			dataCipher:    c,
 		}
 		card.Metadata = nil
-		err = pg.SaveCard(card)
+		err = pg.SaveCard(ctx, card)
 		assert.EqualError(t, err, "error while saving card data for user \"Tywin\": exec error")
 	})
 }
@@ -874,6 +889,7 @@ func TestDb_GetCard(t *testing.T) {
 	key := "thisis32bitlongpassphraseimusing"
 	c, _ := aes.NewCipher([]byte(key))
 	userLogin := "theon"
+	ctx := context.Background()
 
 	t.Run("positive: without bank name and title", func(t *testing.T) {
 		expected := []internal.Card{
@@ -920,7 +936,7 @@ func TestDb_GetCard(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		creds, err := pg.GetCard(internal.Card{
+		creds, err := pg.GetCard(ctx, internal.Card{
 			UserName: userLogin,
 		})
 		assert.NoError(t, err)
@@ -954,7 +970,7 @@ func TestDb_GetCard(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		creds, err := pg.GetCard(internal.Card{
+		creds, err := pg.GetCard(ctx, internal.Card{
 			UserName: userLogin,
 			BankName: Ptr("alpha"),
 		})
@@ -989,7 +1005,7 @@ func TestDb_GetCard(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		creds, err := pg.GetCard(internal.Card{
+		creds, err := pg.GetCard(ctx, internal.Card{
 			UserName: userLogin,
 			Number:   Ptr("9999333344446666"),
 		})
@@ -1024,7 +1040,7 @@ func TestDb_GetCard(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		creds, err := pg.GetCard(internal.Card{
+		creds, err := pg.GetCard(ctx, internal.Card{
 			UserName: userLogin,
 			Number:   Ptr("9999333344446666"),
 			BankName: Ptr("alpha"),
@@ -1048,7 +1064,7 @@ func TestDb_GetCard(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		_, err = pg.GetCard(internal.Card{
+		_, err = pg.GetCard(ctx, internal.Card{
 			UserName: userLogin,
 		})
 		assert.EqualError(t, err, ErrNoData.Error())
@@ -1069,7 +1085,7 @@ func TestDb_GetCard(t *testing.T) {
 			encriptionKey: key,
 			dataCipher:    c,
 		}
-		_, err = pg.GetCard(internal.Card{
+		_, err = pg.GetCard(ctx, internal.Card{
 			UserName: userLogin,
 		})
 		assert.EqualError(t, err, "error while getting cards for user \"theon\": query error")
@@ -1080,6 +1096,7 @@ func TestDb_DeleteCards(t *testing.T) {
 	user := "tomen"
 	bank := "bank of braavos"
 	number := "7777333399991111"
+	ctx := context.Background()
 
 	t.Run("positive: delete all cards for user", func(t *testing.T) {
 		mockDB, mock, err := sqlmock.New()
@@ -1095,7 +1112,7 @@ func TestDb_DeleteCards(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.DeleteCards(internal.Card{
+		err = pg.DeleteCards(ctx, internal.Card{
 			UserName: user,
 		})
 		assert.NoError(t, err)
@@ -1114,7 +1131,7 @@ func TestDb_DeleteCards(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.DeleteCards(internal.Card{
+		err = pg.DeleteCards(ctx, internal.Card{
 			UserName: user,
 			BankName: &bank,
 		})
@@ -1134,7 +1151,7 @@ func TestDb_DeleteCards(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.DeleteCards(internal.Card{
+		err = pg.DeleteCards(ctx, internal.Card{
 			UserName: user,
 			Number:   &number,
 		})
@@ -1154,7 +1171,7 @@ func TestDb_DeleteCards(t *testing.T) {
 		pg := db{
 			conn: mockDB,
 		}
-		err = pg.DeleteCards(internal.Card{
+		err = pg.DeleteCards(ctx, internal.Card{
 			UserName: user,
 		})
 		assert.EqualError(t, err, "error while deleting cards for user \"tomen\": some error")

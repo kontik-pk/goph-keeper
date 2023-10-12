@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"database/sql"
@@ -43,13 +44,13 @@ func New(params internal.Params) (*db, error) {
 
 // SaveNote is a method for saving provided notes (note title, content and probably metadata)
 // for authorized user in goph-keeper storage.
-func (d *db) SaveNote(noteRequest internal.Note) error {
+func (d *db) SaveNote(ctx context.Context, noteRequest internal.Note) error {
 	encryptedContent, err := d.encryptAES(*noteRequest.Content)
 	if err != nil {
 		return fmt.Errorf("error encrypting your classified text: %w", err)
 	}
 	saveNotesQuery := "insert into notes (user_name, title, content, metadata) values ($1, $2, $3, $4)"
-	if _, err = d.conn.Exec(saveNotesQuery, noteRequest.UserName, noteRequest.Title, encryptedContent, noteRequest.Metadata); err != nil {
+	if _, err = d.conn.ExecContext(ctx, saveNotesQuery, noteRequest.UserName, noteRequest.Title, encryptedContent, noteRequest.Metadata); err != nil {
 		return fmt.Errorf("error while saving note for user %q: %w", noteRequest.UserName, err)
 	}
 	return nil
@@ -57,14 +58,14 @@ func (d *db) SaveNote(noteRequest internal.Note) error {
 
 // GetNotes is a method for getting notes (note title, content and probably metadata) for
 // provided authorized user from goph-keeper storage.
-func (d *db) GetNotes(noteRequest internal.Note) ([]internal.Note, error) {
+func (d *db) GetNotes(ctx context.Context, noteRequest internal.Note) ([]internal.Note, error) {
 	args := []any{noteRequest.UserName}
 	getNoteQuery := "select user_name, title, content, metadata from notes where user_name = $1"
 	if noteRequest.Title != nil {
 		args = append(args, *noteRequest.Title)
 		getNoteQuery += fmt.Sprintf(" and title = $%d", len(args))
 	}
-	rows, err := d.conn.Query(getNoteQuery, args...)
+	rows, err := d.conn.QueryContext(ctx, getNoteQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("error while getting notes for user %q: %w", noteRequest.UserName, err)
 	}
@@ -101,7 +102,7 @@ func (d *db) GetNotes(noteRequest internal.Note) ([]internal.Note, error) {
 }
 
 // DeleteNotes is a method for deleting notes for provided user. Title is optional parameter.
-func (d *db) DeleteNotes(noteRequest internal.Note) error {
+func (d *db) DeleteNotes(ctx context.Context, noteRequest internal.Note) error {
 	args := []any{noteRequest.UserName}
 	deleteNotesQuery := "delete from notes where user_name= $1"
 	if noteRequest.Title != nil {
@@ -109,20 +110,20 @@ func (d *db) DeleteNotes(noteRequest internal.Note) error {
 		deleteNotesQuery += " and title = $2"
 	}
 	deleteCredsQuery := "delete from notes where user_name= $1 and title=$2"
-	if _, err := d.conn.Exec(deleteCredsQuery, args...); err != nil {
+	if _, err := d.conn.ExecContext(ctx, deleteCredsQuery, args...); err != nil {
 		return fmt.Errorf("error while deleting note for user %q: %w", noteRequest.UserName, err)
 	}
 	return nil
 }
 
 // UpdateNote is a method for updating note content for authorized user in goph-keeper storage.
-func (d *db) UpdateNote(noteRequest internal.Note) error {
+func (d *db) UpdateNote(ctx context.Context, noteRequest internal.Note) error {
 	encryptedContent, err := d.encryptAES(*noteRequest.Content)
 	if err != nil {
 		return fmt.Errorf("error encrypting note content: %w", err)
 	}
 	updateNoteQuery := "update notes set content = $1, metadata = $2 where user_name = $3 and title = $4"
-	if _, err = d.conn.Exec(updateNoteQuery, encryptedContent, noteRequest.Metadata, noteRequest.UserName, *noteRequest.Title); err != nil {
+	if _, err = d.conn.ExecContext(ctx, updateNoteQuery, encryptedContent, noteRequest.Metadata, noteRequest.UserName, *noteRequest.Title); err != nil {
 		return fmt.Errorf("error while updating note %q for user %q: %w", *noteRequest.Title, noteRequest.UserName, err)
 	}
 	return nil
@@ -130,13 +131,13 @@ func (d *db) UpdateNote(noteRequest internal.Note) error {
 
 // SaveCredentials is a method for saving provided credentials (pair of login/password and probably metadata)
 // for authorized user in goph-keeper storage.
-func (d *db) SaveCredentials(credentialsRequest internal.Credentials) error {
+func (d *db) SaveCredentials(ctx context.Context, credentialsRequest internal.Credentials) error {
 	encryptedPassword, err := d.encryptAES(*credentialsRequest.Password)
 	if err != nil {
 		return fmt.Errorf("error encrypting your classified text: %w", err)
 	}
 	saveCredsQuery := "insert into credentials (user_name, login, password, metadata) values ($1, $2, $3, $4)"
-	if _, err = d.conn.Exec(saveCredsQuery, credentialsRequest.UserName, *credentialsRequest.Login, encryptedPassword, credentialsRequest.Metadata); err != nil {
+	if _, err = d.conn.ExecContext(ctx, saveCredsQuery, credentialsRequest.UserName, *credentialsRequest.Login, encryptedPassword, credentialsRequest.Metadata); err != nil {
 		return fmt.Errorf("error while saving credentials for user %q: %w", credentialsRequest.UserName, err)
 	}
 	return nil
@@ -144,14 +145,14 @@ func (d *db) SaveCredentials(credentialsRequest internal.Credentials) error {
 
 // GetCredentials is a method for getting credentials (pair of login/password and probably metadata) for
 // provided authorized user from goph-keeper storage.
-func (d *db) GetCredentials(credentialsRequest internal.Credentials) ([]internal.Credentials, error) {
+func (d *db) GetCredentials(ctx context.Context, credentialsRequest internal.Credentials) ([]internal.Credentials, error) {
 	args := []any{credentialsRequest.UserName}
 	getCredsQuery := "select user_name, login, password, metadata from credentials where user_name = $1"
 	if credentialsRequest.Login != nil {
 		args = append(args, *credentialsRequest.Login)
 		getCredsQuery += fmt.Sprintf(" and login = $%d", len(args))
 	}
-	rows, err := d.conn.Query(getCredsQuery, args...)
+	rows, err := d.conn.QueryContext(ctx, getCredsQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("error while getting credentials for user %q: %w", credentialsRequest.UserName, err)
 	}
@@ -188,14 +189,14 @@ func (d *db) GetCredentials(credentialsRequest internal.Credentials) ([]internal
 }
 
 // DeleteCredentials is a method for deleting all credentials for provided user. Login is optional parameter.
-func (d *db) DeleteCredentials(credentialsRequest internal.Credentials) error {
+func (d *db) DeleteCredentials(ctx context.Context, credentialsRequest internal.Credentials) error {
 	args := []any{credentialsRequest.UserName}
 	deleteCredsQuery := "delete from credentials where user_name= $1"
 	if credentialsRequest.Login != nil {
 		args = append(args, *credentialsRequest.Login)
 		deleteCredsQuery += " and login=$2"
 	}
-	if _, err := d.conn.Exec(deleteCredsQuery, args...); err != nil {
+	if _, err := d.conn.ExecContext(ctx, deleteCredsQuery, args...); err != nil {
 		return fmt.Errorf("error while deleting credentials for user %q: %w", credentialsRequest.UserName, err)
 	}
 	return nil
@@ -203,13 +204,13 @@ func (d *db) DeleteCredentials(credentialsRequest internal.Credentials) error {
 
 // UpdateCredentials is a method for updating credentials (pair of login/password and probably metadata)
 // for authorized user in goph-keeper storage.
-func (d *db) UpdateCredentials(credentialsRequest internal.Credentials) error {
+func (d *db) UpdateCredentials(ctx context.Context, credentialsRequest internal.Credentials) error {
 	encryptedPassword, err := d.encryptAES(*credentialsRequest.Password)
 	if err != nil {
 		return fmt.Errorf("error encrypting your classified text: %w", err)
 	}
 	updateCredsQuery := "update credentials set password = $1, metadata = $2 where user_name = $3 and login = $4"
-	if _, err = d.conn.Exec(updateCredsQuery, encryptedPassword, credentialsRequest.Metadata, credentialsRequest.UserName, credentialsRequest.Login); err != nil {
+	if _, err = d.conn.ExecContext(ctx, updateCredsQuery, encryptedPassword, credentialsRequest.Metadata, credentialsRequest.UserName, credentialsRequest.Login); err != nil {
 		return fmt.Errorf("error while updating credentials for user %q: %w", credentialsRequest.UserName, err)
 	}
 	return nil
@@ -217,7 +218,7 @@ func (d *db) UpdateCredentials(credentialsRequest internal.Credentials) error {
 
 // SaveCard is a method for saving provided bank card (bank name, card number, cv, password probably metadata)
 // for authorized user in goph-keeper storage.
-func (d *db) SaveCard(cardRequest internal.Card) error {
+func (d *db) SaveCard(ctx context.Context, cardRequest internal.Card) error {
 	encryptedPassword, err := d.encryptAES(*cardRequest.Password)
 	if err != nil {
 		return fmt.Errorf("error encrypting card password: %w", err)
@@ -227,7 +228,7 @@ func (d *db) SaveCard(cardRequest internal.Card) error {
 		return fmt.Errorf("error encrypting card password: %w", err)
 	}
 	saveCardQuery := "insert into cards (user_name, bank_name, number, cv, password, metadata) values ($1, $2, $3, $4, $5, $6)"
-	if _, err = d.conn.Exec(saveCardQuery, cardRequest.UserName, *cardRequest.BankName, *cardRequest.Number, encryptedCV, encryptedPassword, cardRequest.Metadata); err != nil {
+	if _, err = d.conn.ExecContext(ctx, saveCardQuery, cardRequest.UserName, *cardRequest.BankName, *cardRequest.Number, encryptedCV, encryptedPassword, cardRequest.Metadata); err != nil {
 		return fmt.Errorf("error while saving card data for user %q: %w", cardRequest.UserName, err)
 	}
 	return nil
@@ -235,7 +236,7 @@ func (d *db) SaveCard(cardRequest internal.Card) error {
 
 // GetCard is a method for getting user's bank cards (bank name, number, cv, password and probably metadata) for
 // provided authorized user from goph-keeper storage.
-func (d *db) GetCard(cardRequest internal.Card) ([]internal.Card, error) {
+func (d *db) GetCard(ctx context.Context, cardRequest internal.Card) ([]internal.Card, error) {
 	args := []any{cardRequest.UserName}
 	getCardsQuery := "select user_name, bank_name, number, cv, password, metadata from cards where user_name = $1"
 	if cardRequest.BankName != nil {
@@ -246,7 +247,7 @@ func (d *db) GetCard(cardRequest internal.Card) ([]internal.Card, error) {
 		args = append(args, *cardRequest.Number)
 		getCardsQuery += fmt.Sprintf(" and number = $%d", len(args))
 	}
-	rows, err := d.conn.Query(getCardsQuery, args...)
+	rows, err := d.conn.QueryContext(ctx, getCardsQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("error while getting cards for user %q: %w", cardRequest.UserName, err)
 	}
@@ -289,7 +290,7 @@ func (d *db) GetCard(cardRequest internal.Card) ([]internal.Card, error) {
 }
 
 // DeleteCards is a method for deleting bank cards for provided user. Bank name and number are optional parameters.
-func (d *db) DeleteCards(cardRequest internal.Card) error {
+func (d *db) DeleteCards(ctx context.Context, cardRequest internal.Card) error {
 	args := []any{cardRequest.UserName}
 	deleteNotesQuery := "delete from cards where user_name= $1"
 	if cardRequest.Number != nil {
@@ -300,7 +301,7 @@ func (d *db) DeleteCards(cardRequest internal.Card) error {
 		args = append(args, *cardRequest.BankName)
 		deleteNotesQuery += fmt.Sprintf(" and bank_name = $%d", len(args))
 	}
-	if _, err := d.conn.Exec(deleteNotesQuery, args...); err != nil {
+	if _, err := d.conn.ExecContext(ctx, deleteNotesQuery, args...); err != nil {
 		return fmt.Errorf("error while deleting cards for user %q: %w", cardRequest.UserName, err)
 	}
 	return nil
@@ -309,11 +310,11 @@ func (d *db) DeleteCards(cardRequest internal.Card) error {
 // Login is a method for login user in goph-keeper system with provided login and password.
 // User logins are stored in the goph-keeper database as bcrypt hashes.
 // Provided password is hashed and the result is compared with the content from database.
-func (d *db) Login(login string, password string) error {
+func (d *db) Login(ctx context.Context, login string, password string) error {
 	getRegisteredUser := `select login, password from registered_users where login = $1`
 
 	var loginFromDB, passwordFromDB string
-	if err := d.conn.QueryRow(getRegisteredUser, login).Scan(&loginFromDB, &passwordFromDB); err != nil {
+	if err := d.conn.QueryRowContext(ctx, getRegisteredUser, login).Scan(&loginFromDB, &passwordFromDB); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNoSuchUser
 		}
@@ -326,13 +327,13 @@ func (d *db) Login(login string, password string) error {
 }
 
 // Register is a method for register new user in goph-keeper storage with provided credentials.
-func (d *db) Register(login string, password string) error {
+func (d *db) Register(ctx context.Context, login string, password string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("this password is not allowed: %w", err)
 	}
 	registerUser := `insert into registered_users values ($1, $2)`
-	if _, err = d.conn.Exec(registerUser, login, hash); err != nil {
+	if _, err = d.conn.ExecContext(ctx, registerUser, login, hash); err != nil {
 		dublicateKeyErr := ErrDublicateKey{Key: "registered_users_pkey"}
 		if err.Error() == dublicateKeyErr.Error() {
 			return ErrUserAlreadyExists

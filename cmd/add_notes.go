@@ -25,7 +25,7 @@ Only authorized users can use this command. The note content is stored in the da
 	Example: "goph-keeper add-note --user <user-name> --title <note title> --content <note content> --metadata <note metadata>",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := godotenv.Load(".env"); err != nil {
-			log.Fatalf("Some error occured. Err: %s", err)
+			log.Fatalf("error while getting envs: %s", err)
 		}
 		var cfg internal.Params
 		if err := envconfig.Process("", &cfg); err != nil {

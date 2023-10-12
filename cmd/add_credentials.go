@@ -22,7 +22,7 @@ long-term storage. Only authorized users can use this command. The password is s
 
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := godotenv.Load(".env"); err != nil {
-			log.Fatalf("Some error occured. Err: %s", err)
+			log.Fatalf("error while getting envs: %s", err)
 		}
 		var cfg internal.Params
 		if err := envconfig.Process("", &cfg); err != nil {

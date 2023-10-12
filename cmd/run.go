@@ -29,8 +29,7 @@ var runCmd = &cobra.Command{
 
 		// run application
 		if err := run(logger.Sugar()); err != nil {
-			log.Printf(err.Error())
-			os.Exit(1)
+			log.Fatalf(err.Error())
 		}
 	},
 }
@@ -42,8 +41,7 @@ func init() {
 func run(sugar *zap.SugaredLogger) error {
 	var cfg internal.Params
 	if err := envconfig.Process("", &cfg); err != nil {
-		log.Printf("error while loading envs: %s\n", err)
-		os.Exit(1)
+		log.Fatalf("error while loading envs: %s\n", err)
 	}
 	pg, err := database.New(cfg)
 	if err != nil {

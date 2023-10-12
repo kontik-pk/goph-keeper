@@ -20,7 +20,7 @@ var updateCredentialsCmd = &cobra.Command{
 	Example: "goph-keeper update-credentials --user <user-name> --login <saved-login> --password <new-password>",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := godotenv.Load(".env"); err != nil {
-			log.Fatalf("Some error occured. Err: %s", err)
+			log.Fatalf("error while getting envs: %s", err)
 		}
 		var cfg internal.Params
 		if err := envconfig.Process("", &cfg); err != nil {

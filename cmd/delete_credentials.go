@@ -19,7 +19,7 @@ var deleteCredentialsCmd = &cobra.Command{
 	Example: "goph-keeper delete-credentials --user <user-name> --login <user-login>",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := godotenv.Load(".env"); err != nil {
-			log.Fatalf("Some error occured. Err: %s", err)
+			log.Fatalf("error while getting envs: %s", err)
 		}
 		var cfg internal.Params
 		if err := envconfig.Process("", &cfg); err != nil {

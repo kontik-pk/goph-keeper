@@ -7,11 +7,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/kontik-pk/goph-keeper/internal"
+	"github.com/spf13/cobra"
 	"log"
 	"net/http"
-	"os"
-
-	"github.com/spf13/cobra"
 )
 
 // getCredentialsCmd represents the get-credentials command
@@ -23,13 +21,12 @@ Only authorized users can use this command`,
 	Example: "goph-keeper get-credentials --user user_name",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := godotenv.Load(".env"); err != nil {
-			log.Fatalf("Some error occured. Err: %s", err)
+			log.Fatalf("error while getting envs: %s", err)
 		}
 
 		var cfg internal.Params
 		if err := envconfig.Process("", &cfg); err != nil {
-			log.Printf("error while loading envs: %s\n", err)
-			os.Exit(1)
+			log.Fatalf("error while loading envs: %s\n", err)
 		}
 
 		userName, _ := cmd.Flags().GetString("user")

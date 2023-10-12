@@ -7,7 +7,9 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/kontik-pk/goph-keeper/internal"
 	"github.com/kontik-pk/goph-keeper/internal/database"
+	"github.com/kontik-pk/goph-keeper/internal/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
@@ -48,8 +50,8 @@ func TestHandler_Login(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mockedStorage := newMockStorage(t)
-			mockedStorage.On("Login", userName, password).Return(tt.storageResponse)
+			mockedStorage := mocks.NewStorage(t)
+			mockedStorage.On("Login", mock.Anything, userName, password).Return(tt.storageResponse)
 
 			r := chi.NewRouter()
 			h := New(mockedStorage, log)
@@ -72,7 +74,7 @@ func TestHandler_Login(t *testing.T) {
 		})
 	}
 	t.Run("negative: login is not provided", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
+		mockedStorage := mocks.NewStorage(t)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -88,7 +90,7 @@ func TestHandler_Login(t *testing.T) {
 		assert.Equal(t, resp.StatusCode(), http.StatusBadRequest)
 	})
 	t.Run("negative: invalid body", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
+		mockedStorage := mocks.NewStorage(t)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -140,8 +142,8 @@ func TestHandler_Register(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mockedStorage := newMockStorage(t)
-			mockedStorage.On("Register", userName, password).Return(tt.storageResponse)
+			mockedStorage := mocks.NewStorage(t)
+			mockedStorage.On("Register", mock.Anything, userName, password).Return(tt.storageResponse)
 
 			r := chi.NewRouter()
 			h := New(mockedStorage, log)
@@ -203,9 +205,9 @@ func TestHandler_GetUserCredentials(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mockedStorage := newMockStorage(t)
-			mockedStorage.On("Register", userName, systemPassword).Return(nil)
-			mockedStorage.On("GetCredentials", internal.Credentials{UserName: userName}).Return(tt.storageResponse, tt.storageResponseError)
+			mockedStorage := mocks.NewStorage(t)
+			mockedStorage.On("Register", mock.Anything, userName, systemPassword).Return(nil)
+			mockedStorage.On("GetCredentials", mock.Anything, internal.Credentials{UserName: userName}).Return(tt.storageResponse, tt.storageResponseError)
 
 			r := chi.NewRouter()
 			h := New(mockedStorage, log)
@@ -237,8 +239,8 @@ func TestHandler_GetUserCredentials(t *testing.T) {
 	}
 
 	t.Run("negative: invalid json", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", userName, password).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, userName, password).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -267,8 +269,8 @@ func TestHandler_GetUserCredentials(t *testing.T) {
 		assert.Equal(t, resp.StatusCode(), http.StatusBadRequest)
 	})
 	t.Run("negative: unauthorized user", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", userName, password).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, userName, password).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -329,9 +331,9 @@ func TestHandler_SaveUserCredentials(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mockedStorage := newMockStorage(t)
-			mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-			mockedStorage.On("SaveCredentials", internal.Credentials{UserName: systemName, Login: &loginName, Password: &password, Metadata: &metadata}).Return(tt.storageResponseError)
+			mockedStorage := mocks.NewStorage(t)
+			mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+			mockedStorage.On("SaveCredentials", mock.Anything, internal.Credentials{UserName: systemName, Login: &loginName, Password: &password, Metadata: &metadata}).Return(tt.storageResponseError)
 
 			r := chi.NewRouter()
 			h := New(mockedStorage, log)
@@ -363,8 +365,8 @@ func TestHandler_SaveUserCredentials(t *testing.T) {
 		})
 	}
 	t.Run("negative: bad json", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -405,9 +407,9 @@ func TestHandler_DeleteUserCredentials(t *testing.T) {
 	login := "blackgirl"
 
 	t.Run("positive: with login", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-		mockedStorage.On("DeleteCredentials", internal.Credentials{UserName: systemName, Login: &login}).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+		mockedStorage.On("DeleteCredentials", mock.Anything, internal.Credentials{UserName: systemName, Login: &login}).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -440,9 +442,9 @@ func TestHandler_DeleteUserCredentials(t *testing.T) {
 		assert.Equal(t, resp.String(), "credentials for user \"missandei\" with login \"blackgirl\" was successfully deleted")
 	})
 	t.Run("positive: with no login", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-		mockedStorage.On("DeleteCredentials", internal.Credentials{UserName: systemName}).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+		mockedStorage.On("DeleteCredentials", mock.Anything, internal.Credentials{UserName: systemName}).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -507,9 +509,9 @@ func TestHandler_UpdateUserCredentials(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mockedStorage := newMockStorage(t)
-			mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-			mockedStorage.On("UpdateCredentials", internal.Credentials{UserName: systemName, Login: &loginName, Password: &password, Metadata: &metadata}).Return(tt.storageResponseError)
+			mockedStorage := mocks.NewStorage(t)
+			mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+			mockedStorage.On("UpdateCredentials", mock.Anything, internal.Credentials{UserName: systemName, Login: &loginName, Password: &password, Metadata: &metadata}).Return(tt.storageResponseError)
 
 			r := chi.NewRouter()
 			h := New(mockedStorage, log)
@@ -541,8 +543,8 @@ func TestHandler_UpdateUserCredentials(t *testing.T) {
 		})
 	}
 	t.Run("negative: bad json", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -605,9 +607,9 @@ func TestHandler_SaveUserNote(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mockedStorage := newMockStorage(t)
-			mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-			mockedStorage.On("SaveNote", internal.Note{UserName: systemName, Title: &title, Content: &content, Metadata: &metadata}).Return(tt.storageResponseError)
+			mockedStorage := mocks.NewStorage(t)
+			mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+			mockedStorage.On("SaveNote", mock.Anything, internal.Note{UserName: systemName, Title: &title, Content: &content, Metadata: &metadata}).Return(tt.storageResponseError)
 
 			r := chi.NewRouter()
 			h := New(mockedStorage, log)
@@ -639,8 +641,8 @@ func TestHandler_SaveUserNote(t *testing.T) {
 		})
 	}
 	t.Run("negative: bad json", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -711,9 +713,9 @@ func TestHandler_GetUserNote(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mockedStorage := newMockStorage(t)
-			mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-			mockedStorage.On("GetNotes", internal.Note{UserName: systemName}).Return(tt.storageResponse, tt.storageResponseError)
+			mockedStorage := mocks.NewStorage(t)
+			mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+			mockedStorage.On("GetNotes", mock.Anything, internal.Note{UserName: systemName}).Return(tt.storageResponse, tt.storageResponseError)
 
 			r := chi.NewRouter()
 			h := New(mockedStorage, log)
@@ -745,8 +747,8 @@ func TestHandler_GetUserNote(t *testing.T) {
 	}
 
 	t.Run("negative: invalid json", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -775,8 +777,8 @@ func TestHandler_GetUserNote(t *testing.T) {
 		assert.Equal(t, resp.StatusCode(), http.StatusBadRequest)
 	})
 	t.Run("negative: unauthorized user", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -816,9 +818,9 @@ func TestHandler_DeleteUserNotes(t *testing.T) {
 	title := "some title"
 
 	t.Run("positive: with title", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-		mockedStorage.On("DeleteNotes", internal.Note{UserName: systemName, Title: &title}).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+		mockedStorage.On("DeleteNotes", mock.Anything, internal.Note{UserName: systemName, Title: &title}).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -849,9 +851,9 @@ func TestHandler_DeleteUserNotes(t *testing.T) {
 		assert.Equal(t, resp.String(), `notes for user "missandei" with title "some title" was successfully deleted`)
 	})
 	t.Run("positive: with no title", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-		mockedStorage.On("DeleteNotes", internal.Note{UserName: systemName}).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+		mockedStorage.On("DeleteNotes", mock.Anything, internal.Note{UserName: systemName}).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -914,9 +916,9 @@ func TestHandler_UpdateUserNote(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mockedStorage := newMockStorage(t)
-			mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-			mockedStorage.On("UpdateNote", internal.Note{UserName: systemName, Title: &title, Content: &content, Metadata: &metadata}).Return(tt.storageResponseError)
+			mockedStorage := mocks.NewStorage(t)
+			mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+			mockedStorage.On("UpdateNote", mock.Anything, internal.Note{UserName: systemName, Title: &title, Content: &content, Metadata: &metadata}).Return(tt.storageResponseError)
 
 			r := chi.NewRouter()
 			h := New(mockedStorage, log)
@@ -948,8 +950,8 @@ func TestHandler_UpdateUserNote(t *testing.T) {
 		})
 	}
 	t.Run("negative: bad json", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -1013,9 +1015,9 @@ func TestHandler_SaveCard(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mockedStorage := newMockStorage(t)
-			mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-			mockedStorage.On("SaveCard", internal.Card{UserName: systemName, BankName: &bankName, Number: &number, CV: &cv, Password: &password, Metadata: &metadata}).Return(tt.storageResponseError)
+			mockedStorage := mocks.NewStorage(t)
+			mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+			mockedStorage.On("SaveCard", mock.Anything, internal.Card{UserName: systemName, BankName: &bankName, Number: &number, CV: &cv, Password: &password, Metadata: &metadata}).Return(tt.storageResponseError)
 
 			r := chi.NewRouter()
 			h := New(mockedStorage, log)
@@ -1092,9 +1094,9 @@ func TestHandler_GetCard(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mockedStorage := newMockStorage(t)
-			mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-			mockedStorage.On("GetCard", internal.Card{UserName: systemName}).Return(tt.storageResponse, tt.storageResponseError)
+			mockedStorage := mocks.NewStorage(t)
+			mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+			mockedStorage.On("GetCard", mock.Anything, internal.Card{UserName: systemName}).Return(tt.storageResponse, tt.storageResponseError)
 
 			r := chi.NewRouter()
 			h := New(mockedStorage, log)
@@ -1126,8 +1128,8 @@ func TestHandler_GetCard(t *testing.T) {
 	}
 
 	t.Run("negative: invalid json", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -1156,8 +1158,8 @@ func TestHandler_GetCard(t *testing.T) {
 		assert.Equal(t, resp.StatusCode(), http.StatusBadRequest)
 	})
 	t.Run("negative: unauthorized user", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -1198,9 +1200,9 @@ func TestHandler_DeleteCard(t *testing.T) {
 	number := "0000888822227777"
 
 	t.Run("positive: with bank name", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-		mockedStorage.On("DeleteCards", internal.Card{UserName: systemName, BankName: &bankName}).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+		mockedStorage.On("DeleteCards", mock.Anything, internal.Card{UserName: systemName, BankName: &bankName}).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
@@ -1231,9 +1233,9 @@ func TestHandler_DeleteCard(t *testing.T) {
 		assert.Equal(t, resp.String(), `cards of "alpha" bank for user "hound" was successfully deleted`)
 	})
 	t.Run("positive: with no number", func(t *testing.T) {
-		mockedStorage := newMockStorage(t)
-		mockedStorage.On("Register", systemName, systemPassword).Return(nil)
-		mockedStorage.On("DeleteCards", internal.Card{UserName: systemName, Number: &number}).Return(nil)
+		mockedStorage := mocks.NewStorage(t)
+		mockedStorage.On("Register", mock.Anything, systemName, systemPassword).Return(nil)
+		mockedStorage.On("DeleteCards", mock.Anything, internal.Card{UserName: systemName, Number: &number}).Return(nil)
 
 		r := chi.NewRouter()
 		h := New(mockedStorage, log)
