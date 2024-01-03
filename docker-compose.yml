@@ -1,0 +1,44 @@
+version: "3.7"
+services:
+  database:
+    image: postgres
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    volumes:
+      - data:/var/lib/postgresql/data
+      - .:/app/
+  migrate:
+    image: migrate/migrate
+    env_file:
+      - .env
+    volumes:
+      - .:/migrations
+    command: ["-path", "/migrations/db/migrations", "-database",  "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable", "up"]
+    links:
+      - database
+    depends_on:
+      - database
+    restart: on-failure
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    links:
+      - migrate
+      - database
+    depends_on:
+      - database
+      - migrate
+    networks:
+      - default
+    ports:
+      - "${APPLICATION_PORT}:${APPLICATION_PORT}"
+    volumes:
+      - "${PWD}:/app/"
+    restart: on-failure
+volumes:
+  data:
